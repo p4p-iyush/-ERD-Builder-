@@ -1,0 +1,258 @@
+import type { TableNode, RelationshipEdge } from "../../types/diagram";
+import type { Column } from "../../types/column";
+import type { DataType } from "../../types/column";
+
+// ── Data type mapping to PostgreSQL ───────────────────────────────────────
+const PG_TYPE_MAP: Record<DataType, string> = {
+  integer:     "INTEGER",
+  bigint:      "BIGINT",
+  smallint:    "SMALLINT",
+  serial:      "SERIAL",
+  bigserial:   "BIGSERIAL",
+  string:      "VARCHAR(255)",
+  varchar:     "VARCHAR(255)",
+  text:        "TEXT",
+  boolean:     "BOOLEAN",
+  float:       "FLOAT",
+  decimal:     "DECIMAL(10, 2)",
+  numeric:     "NUMERIC",
+  date:        "DATE",
+  timestamp:   "TIMESTAMP",
+  timestamptz: "TIMESTAMPTZ",
+  uuid:        "UUID",
+  json:        "JSON",
+  jsonb:       "JSONB",
+};
+
+function pgType(dataType: DataType): string {
+  return PG_TYPE_MAP[dataType] ?? "TEXT";
+}
+
+// ── Column SQL line ───────────────────────────────────────────────────────
+function columnToSQL(col: Column, indent = "  "): string {
+  const parts: string[] = [`${indent}"${col.name}"`, pgType(col.dataType)];
+
+  if (col.isPrimaryKey) {
+    // UUID PK with default
+    if (col.dataType === "uuid") {
+      parts.push("DEFAULT uuid_generate_v4()");
+    }
+    parts.push("PRIMARY KEY");
+  }
+
+  if (!col.isNullable && !col.isPrimaryKey) {
+    parts.push("NOT NULL");
+  }
+
+  if (col.isUnique && !col.isPrimaryKey) {
+    parts.push("UNIQUE");
+  }
+
+  if (col.defaultValue && !col.isPrimaryKey) {
+    parts.push(`DEFAULT ${col.defaultValue}`);
+  }
+
+  return parts.join(" ");
+}
+
+// ── Foreign key constraints ───────────────────────────────────────────────
+function buildFKConstraints(
+  tableName: string,
+  columns: Column[],
+  allTables: Map<string, string>
+): string[] {
+  const constraints: string[] = [];
+
+  columns
+    .filter((col) => col.isForeignKey && col.referencedTable)
+    .forEach((col) => {
+      const refTable = col.referencedTable!;
+      const refCol   = col.referencedColumn ?? "id";
+      constraints.push(
+        `ALTER TABLE "${tableName}"\n` +
+        `  ADD CONSTRAINT "fk_${tableName}_${col.name}"\n` +
+        `  FOREIGN KEY ("${col.name}")\n` +
+        `  REFERENCES "${refTable}" ("${refCol}")\n` +
+        `  ON DELETE SET NULL\n` +
+        `  ON UPDATE CASCADE;`
+      );
+    });
+
+  return constraints;
+}
+
+// ── Edge-based FK constraints ─────────────────────────────────────────────
+function buildEdgeFKConstraints(
+  edges: RelationshipEdge[],
+  tableMap: Map<string, { tableName: string; columns: Column[] }>
+): string[] {
+  const constraints: string[] = [];
+
+  edges.forEach((edge) => {
+    const sourceTable = tableMap.get(edge.source);
+    const targetTable = tableMap.get(edge.target);
+    if (!sourceTable || !targetTable) return;
+
+    const relType = edge.data?.relationshipType ?? "one-to-many";
+
+    if (relType === "many-to-many") {
+      // Generate a junction table
+      const junctionName =
+        `${sourceTable.tableName}_${targetTable.tableName}`;
+      constraints.push(
+        `-- Junction table for many-to-many: ` +
+        `${sourceTable.tableName} <-> ${targetTable.tableName}\n` +
+        `CREATE TABLE IF NOT EXISTS "${junctionName}" (\n` +
+        `  "id" UUID DEFAULT uuid_generate_v4() PRIMARY KEY,\n` +
+        `  "${sourceTable.tableName}_id" UUID NOT NULL\n` +
+        `    REFERENCES "${sourceTable.tableName}" ("id") ON DELETE CASCADE,\n` +
+        `  "${targetTable.tableName}_id" UUID NOT NULL\n` +
+        `    REFERENCES "${targetTable.tableName}" ("id") ON DELETE CASCADE,\n` +
+        `  "created_at" TIMESTAMPTZ DEFAULT NOW()\n` +
+        `);`
+      );
+    }
+  });
+
+  return constraints;
+}
+
+// ── Table CREATE statement ────────────────────────────────────────────────
+function tableToSQL(
+  tableName: string,
+  columns: Column[]
+): string {
+  const sorted = [...columns].sort((a, b) => a.order - b.order);
+  const cols   = sorted.map((col) => columnToSQL(col)).join(",\n");
+
+  return (
+    `CREATE TABLE IF NOT EXISTS "${tableName}" (\n` +
+    `${cols}\n` +
+    `);`
+  );
+}
+
+// ── Index generation ──────────────────────────────────────────────────────
+function buildIndexes(tableName: string, columns: Column[]): string[] {
+  return columns
+    .filter((col) => col.isForeignKey && !col.isPrimaryKey)
+    .map(
+      (col) =>
+        `CREATE INDEX IF NOT EXISTS "idx_${tableName}_${col.name}"\n` +
+        `  ON "${tableName}" ("${col.name}");`
+    );
+}
+
+// ── Main generator ────────────────────────────────────────────────────────
+export function generateSQL(
+  nodes: TableNode[],
+  edges: RelationshipEdge[]
+): string {
+  if (nodes.length === 0) {
+    return "-- No tables defined yet.\n-- Add tables to generate SQL.";
+  }
+
+  const lines: string[] = [];
+
+  // Header
+  lines.push(
+    "-- ============================================================",
+    "-- Auto-generated by ERD Builder",
+    `-- Generated: ${new Date().toISOString()}`,
+    `-- Tables: ${nodes.length}  |  Relationships: ${edges.length}`,
+    "-- ============================================================",
+    ""
+  );
+
+  // UUID extension
+  lines.push(
+    "-- Extensions",
+    'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";',
+    ""
+  );
+
+  // Build lookup maps
+  const tableMap = new Map(
+    nodes.map((n) => [
+      n.id,
+      { tableName: n.data.tableName, columns: n.data.columns },
+    ])
+  );
+  const allTableNames = new Map(
+    nodes.map((n) => [n.id, n.data.tableName])
+  );
+
+  // CREATE TABLE statements
+  lines.push("-- ── Tables ─────────────────────────────────────────────────");
+  nodes.forEach((node) => {
+    lines.push("");
+    lines.push(tableToSQL(node.data.tableName, node.data.columns));
+  });
+
+  // Indexes
+  const allIndexes: string[] = [];
+  nodes.forEach((node) => {
+    const indexes = buildIndexes(node.data.tableName, node.data.columns);
+    allIndexes.push(...indexes);
+  });
+
+  if (allIndexes.length > 0) {
+    lines.push(
+      "",
+      "-- ── Indexes ────────────────────────────────────────────────",
+      ...allIndexes.map((idx) => `\n${idx}`)
+    );
+  }
+
+  // Foreign key constraints from column properties
+  const allFKs: string[] = [];
+  nodes.forEach((node) => {
+    const fks = buildFKConstraints(
+      node.data.tableName,
+      node.data.columns,
+      allTableNames
+    );
+    allFKs.push(...fks);
+  });
+
+  // FK constraints from edges
+  const edgeFKs = buildEdgeFKConstraints(edges, tableMap);
+  allFKs.push(...edgeFKs);
+
+  if (allFKs.length > 0) {
+    lines.push(
+      "",
+      "-- ── Foreign Keys & Relationships ───────────────────────────",
+      ...allFKs.map((fk) => `\n${fk}`)
+    );
+  }
+
+  // Row Level Security stubs
+  lines.push(
+    "",
+    "-- ── Row Level Security (enable as needed) ──────────────────"
+  );
+  nodes.forEach((node) => {
+    lines.push(
+      `-- ALTER TABLE "${node.data.tableName}" ENABLE ROW LEVEL SECURITY;`
+    );
+  });
+
+  lines.push("", "-- End of schema");
+  return lines.join("\n");
+}
+
+// ── Diff helper — returns true if SQL needs regeneration ──────────────────
+export function diagramHasChanged(
+  prevNodes: TableNode[],
+  nextNodes: TableNode[],
+  prevEdges: RelationshipEdge[],
+  nextEdges: RelationshipEdge[]
+): boolean {
+  if (prevNodes.length !== nextNodes.length) return true;
+  if (prevEdges.length !== nextEdges.length) return true;
+  return (
+    JSON.stringify(prevNodes) !== JSON.stringify(nextNodes) ||
+    JSON.stringify(prevEdges) !== JSON.stringify(nextEdges)
+  );
+}

@@ -1,26 +1,440 @@
+@config "../tailwind.config.ts";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-dark-900: #141414;
+  --color-dark-800: #1f1f1f;
+  --color-dark-700: #2a2a2a;
+  --color-dark-500: #737373;
+  --color-dark-300: #d4d4d4;
+  --color-dark-200: #e5e5e5;
+  --color-dark-100: #f5f5f5;
+
+  --color-brand-600: #6366f1;
+  --color-brand-500: #818cf8;
+
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.35);
+  --shadow-glow-sm: 0 0 10px rgba(99, 102, 241, 0.2);
+
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+@layer base {
+  /* ── Dark mode (default) ────────────────────────────────────────────── */
+  :root,
+  .dark {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #141414;
+    --bg-card: #1f1f1f;
+    --bg-input: #141414;
+    --border: #2e2e2e;
+    --border-hover: #404040;
+    --text-primary: #f5f5f5;
+    --text-secondary: #a8a8a8;
+    --text-muted: #525252;
+  }
+
+  /* ── Light mode ─────────────────────────────────────────────────────── */
+  .light {
+    --bg-primary: #f8f8f8;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-input: #f3f3f3;
+    --border: #e0e0e0;
+    --border-hover: #c8c8c8;
+    --text-primary: #111111;
+    --text-secondary: #555555;
+    --text-muted: #999999;
+  }
+
+ *,
+*::before,
+*::after {
+  border-color: var(--border);
+  box-sizing: border-box;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+ html {
+  /* No smooth scroll — causes lag during React Flow canvas transitions */
+  scroll-behavior: auto;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    @apply antialiased font-sans;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  /* ── Light mode body overrides ──────────────────────────────────────── */
+  .light body,
+  .light {
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  /* ── Light mode component overrides ────────────────────────────────── */
+  .light .bg-dark-800 {
+    @apply bg-white;
+  }
+  .light .bg-dark-900 {
+    @apply bg-gray-50;
+  }
+  .light .bg-dark-950 {
+    @apply bg-gray-100;
+  }
+  .light .bg-dark-700 {
+    @apply bg-gray-100;
+  }
+  .light .border-dark-700 {
+    @apply border-gray-200;
+  }
+  .light .border-dark-800 {
+    @apply border-gray-100;
+  }
+  .light .text-dark-100 {
+    @apply text-gray-900;
+  }
+  .light .text-dark-200 {
+    @apply text-gray-800;
+  }
+  .light .text-dark-300 {
+    @apply text-gray-700;
+  }
+  .light .text-dark-400 {
+    @apply text-gray-500;
+  }
+  .light .text-dark-500 {
+    @apply text-gray-400;
+  }
+
+  /* ── React Flow light mode ──────────────────────────────────────────── */
+  .light .react-flow {
+    background-color: #f0f0f0 !important;
+  }
+  .light .react-flow__node {
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
+  }
+
+  /* ── Scrollbar ──────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #404040;
+    border-radius: 4px;
+  }
+  .light ::-webkit-scrollbar-thumb {
+    background: #d0d0d0;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #525252;
+  }
+
+  /* ── Text selection ─────────────────────────────────────────────────── */
+  ::selection {
+    background: rgba(98, 112, 241, 0.25);
+    color: inherit;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* ── Glass morphism ─────────────────────────────────────────────────── */
+  .glass {
+    @apply bg-dark-800/80 backdrop-blur-md border border-dark-700;
+  }
+  .light .glass {
+    @apply bg-white/80 border-gray-200;
+  }
+
+  /* ── Cards ──────────────────────────────────────────────────────────── */
+  .card-dark {
+    @apply bg-dark-800 border border-dark-700 rounded-xl;
+  }
+  .light .card-dark {
+    @apply bg-white border-gray-200 shadow-sm;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-500 text-white font-medium
+           px-4 py-2 rounded-lg transition-all duration-200
+           shadow-glow-sm hover:shadow-glow active:scale-95;
+  }
+  .btn-ghost {
+    @apply hover:bg-dark-700 text-dark-300 hover:text-dark-100
+           px-3 py-2 rounded-lg transition-all duration-200;
+  }
+  .light .btn-ghost {
+    @apply hover:bg-gray-100 text-gray-600 hover:text-gray-900;
+  }
+
+  /* ── Inputs ─────────────────────────────────────────────────────────── */
+  .input-dark {
+    @apply bg-dark-900 border border-dark-700 text-dark-100
+           placeholder-dark-500 rounded-lg px-3 py-2
+           focus:outline-none focus:ring-2 focus:ring-brand-600/50
+           focus:border-brand-600 transition-all duration-200;
+  }
+  .light .input-dark {
+    @apply bg-gray-50 border-gray-200 text-gray-900
+           placeholder-gray-400;
+  }
+
+  /* ── Panels ─────────────────────────────────────────────────────────── */
+  .panel {
+    @apply bg-dark-800/95 backdrop-blur-md border border-dark-700
+           rounded-2xl shadow-dark-lg;
+  }
+  .light .panel {
+    @apply bg-white/95 border-gray-200 shadow-lg;
+  }
+}
+
+@layer utilities {
+  /* ── Animations ─────────────────────────────────────────────────────── */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    from {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes slideDown {
+    from {
+      transform: translateY(-12px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes shrink {
+    from {
+      width: 100%;
+    }
+    to {
+      width: 0%;
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.25s ease-out;
+  }
+  .animate-slide-down {
+    animation: slideDown 0.25s ease-out;
+  }
+  .animate-shrink {
+    animation: shrink linear forwards;
+  }
+  .animate-spin-slow {
+    animation: spin 3s linear infinite;
+  }
+
+  /* ── Shimmer loading effect ─────────────────────────────────────────── */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    background-size: 200% auto;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  /* ── React Flow overrides ───────────────────────────────────────────── */
+  .react-flow {
+    background-color: #0a0a0a;
+  }
+  .react-flow__edge-path {
+    transition:
+      stroke 0.25s ease,
+      stroke-width 0.2s ease;
+  }
+  .react-flow__handle {
+    border-radius: 50% !important;
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+  .react-flow__handle:hover {
+    transform: scale(1.4);
+  }
+  .react-flow__selection {
+    background: rgba(98, 112, 241, 0.08);
+    border: 1.5px solid rgba(98, 112, 241, 0.5);
+    border-radius: 6px;
+  }
+  .react-flow__nodesselection-rect {
+    background: rgba(98, 112, 241, 0.08);
+    border: 1.5px solid rgba(98, 112, 241, 0.5);
+    border-radius: 4px;
+  }
+  .react-flow__minimap {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .react-flow__controls {
+    display: none;
+  }
+  .react-flow__edge-textbg {
+    display: none;
+  }
+
+  .react-flow__connectionline path {
+    stroke: #6270f1;
+    stroke-width: 2;
+    stroke-dasharray: 5 3;
+    animation: dashdraw 0.5s linear infinite;
+  }
+  @keyframes dashdraw {
+    from {
+      stroke-dashoffset: 10;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* ── SQL panel ──────────────────────────────────────────────────────── */
+  .sql-panel pre {
+    tab-size: 2;
+  }
+  .sql-panel ::-webkit-scrollbar {
+    width: 4px;
+  }
+  .sql-panel span {
+    transition: color 0.1s ease;
+  }
+
+  /* ── Focus visible ──────────────────────────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid #6270f1;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* ── No scrollbar utility ───────────────────────────────────────────── */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* ── Truncate text with ellipsis ────────────────────────────────────── */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ── React Flow dark theme overrides ─────────────────────────────────── */
+.react-flow {
+  background-color: #0a0a0a;
+}
+
+.react-flow__edge-path {
+  transition:
+    stroke 0.25s ease,
+    stroke-width 0.2s ease;
+}
+
+.react-flow__handle {
+  border-radius: 50% !important;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.4);
+}
+
+.react-flow__selection {
+  background: rgba(98, 112, 241, 0.08);
+  border: 1.5px solid rgba(98, 112, 241, 0.5);
+  border-radius: 6px;
+}
+
+.react-flow__nodesselection-rect {
+  background: rgba(98, 112, 241, 0.08);
+  border: 1.5px solid rgba(98, 112, 241, 0.5);
+  border-radius: 4px;
+}
+
+.react-flow__minimap {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.react-flow__controls {
+  display: none; /* We use our own controls */
+}
+
+/* Remove default white edge label background */
+.react-flow__edge-textbg {
+  display: none;
+}
+
+/* Connection line style */
+.react-flow__connectionline path {
+  stroke: #6270f1;
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+  animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ── SQL Preview Panel ────────────────────────────────────────────────── */
+.sql-panel pre {
+  tab-size: 2;
+}
+
+/* Make scrollbar thinner in SQL panel */
+.sql-panel ::-webkit-scrollbar {
+  width: 4px;
+}
+
+/* Syntax highlight transitions */
+.sql-panel span {
+  transition: color 0.1s ease;
 }
