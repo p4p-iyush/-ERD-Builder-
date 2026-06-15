@@ -1,5 +1,4 @@
 "use client";
-
 import {
   Plus,
   Undo2,
@@ -13,6 +12,9 @@ import {
   Copy,
   Clipboard,
   Table2,
+  Database,
+  Zap,
+  LayoutGrid,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import { useDiagramStore, useUIStore, useHistoryStore } from "../../store";
@@ -23,9 +25,20 @@ import { cn } from "../../lib/utils/cn";
 interface FloatingToolbarProps {
   onAddTable: () => void;
   onSave: () => void;
+  onToggleDBImport: () => void;
+  isDBImportOpen: boolean;
+  onToggleQueryViz: () => void;
+  isQueryVizOpen: boolean;
 }
 
-export function FloatingToolbar({ onAddTable, onSave }: FloatingToolbarProps) {
+export function FloatingToolbar({
+  onAddTable,
+  onSave,
+  onToggleDBImport,
+  isDBImportOpen,
+  onToggleQueryViz,
+  isQueryVizOpen,
+}: FloatingToolbarProps) {
   const {
     selectedNodeIds,
     selectedEdgeIds,
@@ -44,19 +57,31 @@ export function FloatingToolbar({ onAddTable, onSave }: FloatingToolbarProps) {
   } = useUIStore();
 
   const { undo, redo, canUndo, canRedo } = useHistoryStore();
+  const applyAutoLayout = useDiagramStore((s) => s.applyAutoLayout);
+const { fitView } = useReactFlow();
 
   const hasSelection = selectedNodeIds.length > 0 || selectedEdgeIds.length > 0;
   const hasCopied = !!copiedNodes?.length;
 
   // ── Toolbar sections ─────────────────────────────────────────────────────
-  const tableActions = [
-    {
-      icon: <Plus className="w-4 h-4" />,
-      label: "Add table",
-      shortcut: "Ctrl+N",
-      onClick: onAddTable,
+const tableActions = [
+  {
+    icon: <Plus className="w-4 h-4" />,
+    label: "Add table",
+    shortcut: "Ctrl+N",
+    onClick: onAddTable,
+  },
+  {
+    icon: <LayoutGrid className="w-4 h-4" />,
+    label: "Auto layout",
+    onClick: () => {
+      applyAutoLayout();
+      setTimeout(() => {
+        fitView({ padding: 0.15, duration: 800 });
+      }, 50);
     },
-  ];
+  },
+];
 
   const editActions = [
     {
@@ -100,22 +125,34 @@ export function FloatingToolbar({ onAddTable, onSave }: FloatingToolbarProps) {
     },
   ];
 
-  const viewActions = [
-    {
-      icon: <Search className="w-4 h-4" />,
-      label: "Search tables",
-      shortcut: "Ctrl+F",
-      onClick: () => setSearchOpen(true),
-      isActive: isSearchOpen,
-    },
-    {
-      icon: <Code2 className="w-4 h-4" />,
-      label: "SQL Preview",
-      shortcut: "Ctrl+`",
-      onClick: toggleSQLPanel,
-      isActive: isSQLPanelOpen,
-    },
-  ];
+ const viewActions = [
+  {
+    icon: <Search className="w-4 h-4" />,
+    label: "Search tables",
+    shortcut: "Ctrl+F",
+    onClick: () => setSearchOpen(true),
+    isActive: isSearchOpen,
+  },
+  {
+    icon: <Code2 className="w-4 h-4" />,
+    label: "SQL Preview",
+    shortcut: "Ctrl+`",
+    onClick: toggleSQLPanel,
+    isActive: isSQLPanelOpen,
+  },
+  {
+    icon: <Database className="w-4 h-4" />,
+    label: "Import from DB",
+    onClick: onToggleDBImport,
+    isActive: isDBImportOpen,
+  },
+  {
+    icon: <Zap className="w-4 h-4" />,
+    label: "Query Visualizer",
+    onClick: onToggleQueryViz,
+    isActive: isQueryVizOpen,
+  },
+];
 
   const projectActions = [
     {

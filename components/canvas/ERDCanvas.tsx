@@ -14,12 +14,15 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useDiagramStore, useUIStore, useHistoryStore } from "../../store";
-import { TableNode }        from "../../components/nodes/TableNode";
+import { TableNode } from "../../components/nodes/TableNode";
 import { RelationshipEdge } from "../../components/edges/RelationshipEdge";
-import { CanvasControls }   from "./CanvasControls";
-import { MiniMapPanel }     from "./MiniMapPanel";
-import type { TableNode as TableNodeType, RelationshipEdge as RelationshipEdgeType } from "../../types/diagram";
-
+import { CanvasControls } from "./CanvasControls";
+import { MiniMapPanel } from "./MiniMapPanel";
+import type {
+  TableNode as TableNodeType,
+  RelationshipEdge as RelationshipEdgeType,
+} from "../../types/diagram";
+import { hasOverlappingNodes } from "../../lib/utils/autoLayout";
 // ── Register custom types ──────────────────────────────────────────────────
 const nodeTypes = { tableNode: TableNode } as const;
 const edgeTypes = { relationshipEdge: RelationshipEdge } as const;
@@ -38,13 +41,15 @@ function CanvasInner() {
   } = useDiagramStore();
 
   const { pushSnapshot } = useHistoryStore();
-  const { openPanel }    = useUIStore();
-  const { fitView }      = useReactFlow();
+  const { openPanel } = useUIStore();
+  const { fitView } = useReactFlow();
 
   const [isLocked, setIsLocked] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
-  const reactFlowWrapper        = useRef<HTMLDivElement>(null);
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
+  const applyAutoLayout = useDiagramStore((s) => s.applyAutoLayout);
+  
   // Fit view after initial load
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -53,13 +58,32 @@ function CanvasInner() {
     return () => clearTimeout(timer);
   }, [fitView]);
 
+  useEffect(() => {
+    if (nodes.length === 0) return;
+
+    // Small delay to let React Flow measure nodes first
+    const timer = setTimeout(() => {
+      if (hasOverlappingNodes(nodes)) {
+        applyAutoLayout();
+        // Re-fit view after layout settles
+        setTimeout(() => {
+          fitView({ padding: 0.15, duration: 800 });
+        }, 100);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+    // Only run once on initial load — empty dep array after nodes are first set
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes.length === 0 ? 0 : 1]);
+
   // Track selection changes
   const onSelectionChange = useCallback(
     ({ nodes: selNodes, edges: selEdges }: OnSelectionChangeParams) => {
       setSelectedNodes(selNodes.map((n) => n.id));
       setSelectedEdges(selEdges.map((e) => e.id));
     },
-    [setSelectedNodes, setSelectedEdges]
+    [setSelectedNodes, setSelectedEdges],
   );
 
   // Push snapshot when drag ends
@@ -73,7 +97,7 @@ function CanvasInner() {
     (_: React.MouseEvent, edge: Edge) => {
       openPanel("relationship", edge.id);
     },
-    [openPanel]
+    [openPanel],
   );
 
   return (
@@ -102,12 +126,18 @@ function CanvasInner() {
         deleteKeyCode={null}
         multiSelectionKeyCode="Shift"
         connectionRadius={40}
-        translateExtent={[[-2000, -2000], [6000, 6000]]}
-        nodeExtent={[[-1800, -1800], [5800, 5800]]}
+        translateExtent={[
+          [-2000, -2000],
+          [6000, 6000],
+        ]}
+        nodeExtent={[
+          [-1800, -1800],
+          [5800, 5800],
+        ]}
         snapToGrid={false}
         elevateNodesOnSelect
         defaultEdgeOptions={{
-          type:     "relationshipEdge",
+          type: "relationshipEdge",
           animated: false,
         }}
         proOptions={{ hideAttribution: true }}

@@ -24,6 +24,7 @@ import type {
 import type { Column, DataType } from "../types/column";
 import type { RelationshipType } from "../types/relationship";
 import { TABLE_COLORS } from "../types/diagram";
+import { computeHierarchicalLayout } from "../lib/utils/autoLayout";
 
 interface DiagramStore {
   // State
@@ -49,12 +50,16 @@ interface DiagramStore {
 
   // Table actions
   addTable: (position?: { x: number; y: number }) => string;
+  addTableWithData: (
+    position: { x: number; y: number },
+    data: TableData,
+  ) => string;
   updateTableName: (nodeId: string, name: string) => void;
   deleteTable: (nodeId: string) => void;
   duplicateTable: (nodeId: string) => void;
   updateTableColor: (nodeId: string, color: string) => void;
   setHighlighted: (nodeId: string | null) => void;
-
+  applyAutoLayout: () => void;
   // Column actions
   addColumn: (nodeId: string) => void;
   updateColumn: (
@@ -203,6 +208,27 @@ export const useDiagramStore = create<DiagramStore>()(
       return id;
     },
 
+    addTableWithData: (position, data) => {
+      const id = uuidv4();
+      const colorIndex = tableCounter % TABLE_COLORS.length;
+      const newNode: TableNode = {
+        id,
+        type: "tableNode",
+        position,
+        data: {
+          color: TABLE_COLORS[colorIndex],
+          isHighlighted: false,
+          isFaded: false,
+          ...data, // tableName + columns override defaults
+        },
+      };
+      tableCounter++;
+      set((state) => ({
+        nodes: [...state.nodes, newNode],
+        isDirty: true,
+      }));
+      return id;
+    },
     updateTableName: (nodeId, name) => {
       set((state) => ({
         nodes: state.nodes.map((n) =>
@@ -304,7 +330,20 @@ export const useDiagramStore = create<DiagramStore>()(
         } as Partial<DiagramStore>;
       });
     },
+    applyAutoLayout: () => {
+      const { nodes, edges } = get();
+      if (nodes.length === 0) return;
 
+      const positions = computeHierarchicalLayout(nodes, edges);
+
+      set((state) => ({
+        nodes: state.nodes.map((node) => {
+          const newPos = positions.find((p) => p.id === node.id);
+          return newPos ? { ...node, position: newPos.position } : node;
+        }),
+        isDirty: true,
+      }));
+    },
     // ── Column actions ─────────────────────────────────────────────────────
     addColumn: (nodeId) => {
       set((state) => ({

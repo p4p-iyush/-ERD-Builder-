@@ -1,6 +1,5 @@
 "use client";
-
-import { useEffect, useCallback, use } from "react";
+import { useEffect, useCallback, use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { createClient } from "../../../lib/supabase/client";
@@ -26,11 +25,15 @@ import { SQLPreviewPanel } from "../../../components/panels/SQLPreviewPanel";
 import { ExportModal } from "../../../components/modals/ExportModal";
 
 // Add these imports
-import {TablePropertiesPanel} from "../../../components/panels/TablePropertiesPanel";
+import { TablePropertiesPanel } from "../../../components/panels/TablePropertiesPanel";
 import { ColumnPropertiesPanel } from "../../../components/panels/ColumnPropertiesPanel";
 import { RelationshipPanel } from "../../../components/panels/RelationshipPanel";
 
+// Add this line alongside the other panel imports
+import { DBImportPanel } from "../../../components/panels/DBImportPanel";
+
 import { ShareModal } from "../../../components/modals/ShareModal";
+import { QueryVisualizerPanel } from "../../../components/panels/QueryVisualizerPanel";
 
 // ── Inner editor — must be inside ReactFlowProvider ───────────────────────
 function EditorInner({
@@ -47,7 +50,8 @@ function EditorInner({
   const { setCurrentProject, addToRecent } = useProjectStore();
   const { clearHistory } = useHistoryStore();
   const { isSQLPanelOpen } = useUIStore();
-
+  const [isDBImportOpen, setIsDBImportOpen] = useState(false);
+  const [isQueryVizOpen, setIsQueryVizOpen] = useState(false);
   // Load diagram into stores on mount
   useEffect(() => {
     setCurrentProject(initialProject);
@@ -77,36 +81,68 @@ function EditorInner({
     <div className="flex flex-col h-screen bg-dark-950 overflow-hidden">
       {/* Editor header */}
       <EditorHeader />
-
       {/* Main area */}
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Canvas */}
-        {/* Canvas */}
-        <div className="flex-1 relative">
-          <ERDCanvas />
-          <SearchPanel />
+  <div className="flex flex-1 overflow-hidden relative">
 
-          {/* Properties panels — float over canvas */}
-          <TablePropertiesPanel />
-          <ColumnPropertiesPanel />
-          <RelationshipPanel />
+  {/* DB Import panel — left side */}
+  {isDBImportOpen && (
+    <div
+      className="w-[360px] shrink-0 border-r border-dark-800
+                 bg-dark-900 overflow-hidden flex flex-col
+                 animate-slide-up"
+    >
+      <DBImportPanel onClose={() => setIsDBImportOpen(false)} />
+    </div>
+  )}
 
-          <FloatingToolbar onAddTable={handleAddTable} onSave={saveNow} />
-        </div>
+  {/* Query Visualizer panel — left side (replaces DB Import if both somehow open) */}
+  {isQueryVizOpen && !isDBImportOpen && (
+    <div
+      className="w-[360px] shrink-0 border-r border-dark-800
+                 bg-dark-900 overflow-hidden flex flex-col
+                 animate-slide-up"
+    >
+      <QueryVisualizerPanel onClose={() => setIsQueryVizOpen(false)} />
+    </div>
+  )}
 
-        {/* SQL Preview panel */}
-        {isSQLPanelOpen && (
-          <div
-            className="w-[400px] shrink-0 border-l border-dark-800
-                     bg-dark-900 overflow-hidden flex flex-col
-                     animate-slide-up"
-          >
-            <SQLPreviewPanel />
-          </div>
-        )}
-      </div>
+  {/* Canvas */}
+  <div className="flex-1 relative">
+    <ERDCanvas />
+    <SearchPanel />
 
-      {/* Modals */}
+    {/* Properties panels — float over canvas */}
+    <TablePropertiesPanel />
+    <ColumnPropertiesPanel />
+    <RelationshipPanel />
+
+    <FloatingToolbar
+      onAddTable={handleAddTable}
+      onSave={saveNow}
+      onToggleDBImport={() => {
+        setIsDBImportOpen((p) => !p);
+        setIsQueryVizOpen(false);
+      }}
+      isDBImportOpen={isDBImportOpen}
+      onToggleQueryViz={() => {
+        setIsQueryVizOpen((p) => !p);
+        setIsDBImportOpen(false);
+      }}
+      isQueryVizOpen={isQueryVizOpen}
+    />
+  </div>
+
+  {/* SQL Preview panel — right side */}
+  {isSQLPanelOpen && (
+    <div
+      className="w-[400px] shrink-0 border-l border-dark-800
+                 bg-dark-900 overflow-hidden flex flex-col
+                 animate-slide-up"
+    >
+      <SQLPreviewPanel />
+    </div>
+  )}
+</div>
       {/* Modals */}
       <ShortcutsModal />
       <ConfirmModal />
