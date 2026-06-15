@@ -2,10 +2,10 @@
 import type { TableNode, RelationshipEdge } from "../../types/diagram";
 
 // ── Constants ─────────────────────────────────────────────────────────────
-const NODE_WIDTH  = 380;
-const NODE_HEIGHT = 300; // base height, real height varies by column count
-const H_GAP       = 180;  // horizontal gap between nodes
-const V_GAP       = 200; // vertical gap between levels
+const NODE_WIDTH  = 280;
+const NODE_HEIGHT = 200; // base height, real height varies by column count
+const H_GAP       = 80;  // horizontal gap between nodes
+const V_GAP       = 100; // vertical gap between levels
 
 // Estimate node height by column count
 function estimateHeight(node: TableNode): number {
