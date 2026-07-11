@@ -175,7 +175,7 @@ export function LoginForm() {
       </form>
 
       {/* Divider */}
-      <div className="relative">
+      {/* <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-dark-700" />
         </div>
@@ -184,10 +184,10 @@ export function LoginForm() {
             or continue with
           </span>
         </div>
-      </div>
+      </div> */}
 
       {/* Google OAuth */}
-      <Button
+      {/* <Button
         type="button"
         variant="outline"
         size="lg"
@@ -223,7 +223,7 @@ export function LoginForm() {
         }
       >
         Continue with Google
-      </Button>
+      </Button> */}
 
       {/* Sign up link */}
       <p className="text-center text-sm text-dark-400">
